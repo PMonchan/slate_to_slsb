@@ -248,10 +248,27 @@ func processSlateActionLogFile(slateActionLogPath string, slsbJsonDir string, ou
 
 	// Process each SLSB JSON file
 	for _, slsbJsonPath := range slsbJsonFiles {
-		// Read the SLSB JSON file
-		slsbJsonData, err := ioutil.ReadFile(slsbJsonPath)
+		// Determine the output path for this file
+		base := filepath.Base(slsbJsonPath)
+		outputPath := filepath.Join(outputDir, base)
+
+		// Check if the file already exists in the output directory
+		// If it does, read from there instead of the original directory
+		var slsbJsonData []byte
+		var readPath string
+
+		if _, err := os.Stat(outputPath); err == nil {
+			// File exists in output directory, read from there
+			slsbJsonData, err = ioutil.ReadFile(outputPath)
+			readPath = outputPath
+		} else {
+			// File doesn't exist in output directory, read from original directory
+			slsbJsonData, err = ioutil.ReadFile(slsbJsonPath)
+			readPath = slsbJsonPath
+		}
+
 		if err != nil {
-			fmt.Printf("Error reading SLSB JSON file %s: %v\n", slsbJsonPath, err)
+			fmt.Printf("Error reading SLSB JSON file %s: %v\n", readPath, err)
 			continue
 		}
 
@@ -259,7 +276,7 @@ func processSlateActionLogFile(slateActionLogPath string, slsbJsonDir string, ou
 		var slsbJson SLSBJson
 		err = json.Unmarshal(slsbJsonData, &slsbJson)
 		if err != nil {
-			fmt.Printf("Error parsing SLSB JSON file %s: %v\n", slsbJsonPath, err)
+			fmt.Printf("Error parsing SLSB JSON file %s: %v\n", readPath, err)
 			continue
 		}
 
@@ -282,9 +299,6 @@ func processSlateActionLogFile(slateActionLogPath string, slsbJsonDir string, ou
 		}
 
 		// Write the modified SLSB JSON to the output directory
-		base := filepath.Base(slsbJsonPath)
-		outputPath := filepath.Join(outputDir, base)
-
 		err = ioutil.WriteFile(outputPath, modifiedSlsbJsonData, 0644)
 		if err != nil {
 			fmt.Printf("Error writing modified SLSB JSON to file %s: %v\n", outputPath, err)
